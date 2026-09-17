@@ -1,0 +1,7 @@
+Flask
+Flask-Cors
+pymongo
+boto3
+python-dotenv
+requests
+Flask-JWT-Extended

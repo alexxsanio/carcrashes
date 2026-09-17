@@ -1,0 +1,11 @@
+.env
+venv/
+__pycache__/
+*.pyc
+
+
+
+```
+I would change the current direct S3 URLs to private S3 objects + presigned URLs. That prevents anyone who gets an S3 URL from automatically having permanent public access to crash footage.
+And because you're collecting potentially sensitive crash footage, I'd add file-size/type validation, authentication, rate limiting, and a retention/deletion policy before using this with real users.
+```
