@@ -85,8 +85,8 @@ function ObservationMedia({
     useState(false);
 
     async function loadMedia() {
-    if (loaded) {
-    return;
+      if (loaded) {
+      return;
     }
 
 
@@ -106,7 +106,7 @@ function ObservationMedia({
     const data = await response.json();
 
     setMedia(
-      data.observation?.media || []
+      data.media || []
     );
 
     setLoaded(true);
@@ -126,15 +126,15 @@ if (!loaded) {
       onClick={loadMedia}
       className="mt-3 rounded bg-slate-900 px-3 py-2 text-xs text-white"
     >
-  {loading
-  ? "Loading..."
-  : "View Photos / Video"} </button>
+      {loading
+      ? "Loading..."
+      : "View Photos / Video"} </button>
   );
 }
 
 if (media.length === 0) {
   return ( <p className="mt-3 text-xs text-slate-500">
-  No photos or video attached. </p>
+    No photos or video attached. </p>
   );
 }
 

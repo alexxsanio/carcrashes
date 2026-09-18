@@ -30,6 +30,8 @@ export default function CrashObservationModal({
   const [time, setTime] = useState("");
   const [hour, setHour] = useState("");
   const [minute, setMinute] = useState("");
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
   const [severity, setSeverity] = useState("Property damage");
   const [vehicles, setVehicles] = useState(2);
   const [nearbyPlace, setNearbyPlace] = useState("");
@@ -82,6 +84,15 @@ export default function CrashObservationModal({
         formData.append(
             "nearbyPlace",
             nearbyPlace
+        );
+        formData.append(
+          "latitude",
+          String(latitude)
+        );
+
+        formData.append(
+          "longitude",
+          String(longitude)
         );
         formData.append("severity", severity);
         formData.append(

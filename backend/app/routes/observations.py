@@ -1,16 +1,20 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 
 from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity,
 )
+from bson import ObjectId
+from bson.errors import InvalidId
 
-from app.extensions import mongo_db
 from app.services.file_validation import (
-    validate_media_files,
+    validate_media_file,
 )
 from app.services.s3 import S3Service
 from app.services.geocoder import geocode_place
+
+from datetime import datetime, timezone
+from app import extensions
 
 
 observations_bp = Blueprint(
@@ -158,7 +162,7 @@ def get_observations():
     """
 
     observations = list(
-        mongo_db.observations.find({})
+        extensions.mongo_db["observations"].find({})
         .sort(
             "createdAt",
             -1,
@@ -181,40 +185,88 @@ def get_observations():
 )
 @jwt_required()
 def get_observation(observation_id):
-    """
-    Get one observation and generate
-    temporary media URLs.
-    """
 
     try:
-        object_id = ObjectId(
-            observation_id
-        )
-    except Exception:
-        return jsonify({
-            "error": "Invalid observation ID."
-        }), 400
+        # 1. Convert ID
+        try:
+            object_id = ObjectId(observation_id)
+        except InvalidId as e:
+            return jsonify({
+                "error": "Invalid observation ID"
+            }), 400
 
-    observation = (
-        mongo_db.observations.find_one(
-            {
+        # 2. Query MongoDB
+        try:
+            observation = extensions.mongo_db["observations"].find_one({
                 "_id": object_id
-            }
-        )
-    )
+            })
+        except Exception as e:
+            return jsonify({
+                "error": "MongoDB query failed",
+                "details": str(e)
+            }), 500
 
-    if not observation:
+        if not observation:
+            return jsonify({
+                "error": "Observation not found"
+            }), 404
+
+        # 3. Create S3 service
+        try:
+            s3 = get_s3_service()
+        except Exception as e:
+            return jsonify({
+                "error": "S3 service failed",
+                "details": str(e)
+            }), 500
+
+        # 4. Generate media URLs
+        media = []
+
+        for item in observation.get("media", []):
+
+            try:
+                url = s3.generate_presigned_url(
+                    item["key"],
+                    expiration=900
+                )
+
+                media.append({
+                    "url": url,
+                    "type": item["type"],
+                    "filename": item["filename"],
+                })
+
+            except Exception as e:
+
+                return jsonify({
+                    "error": "Failed to generate media URL",
+                    "details": str(e)
+                }), 500
+
+        # 5. Return observation
+        result = {
+            "id": str(observation["_id"]),
+            "nearbyPlace": observation.get("nearbyPlace"),
+            "latitude": observation.get("latitude"),
+            "longitude": observation.get("longitude"),
+            "date": observation.get("date"),
+            "time": observation.get("time"),
+            "severity": observation.get("severity"),
+            "vehicles": observation.get("vehicles"),
+            "description": observation.get("description"),
+            "media": media,
+            "createdAt": observation.get("createdAt"),
+        }
+
+        return jsonify(result), 200
+
+    except Exception as e:
+
         return jsonify({
-            "error": "Observation not found."
-        }), 404
-
-    return jsonify({
-        "observation":
-            serialize_observation(
-                observation,
-                include_media_urls=True,
-            )
-    })
+            "error": "Unexpected server error",
+            "details": str(e)
+        }), 500
 
 
 @observations_bp.route(
@@ -298,17 +350,6 @@ def create_observation():
                 "Vehicles must be at least 1."
         }), 400
 
-    # -------------------------
-    # Validate files BEFORE S3
-    # -------------------------
-
-    try:
-        validated_files = validate_media_files(files)
-    except ValueError as error:
-        return {
-            "error": str(error)
-        }, 400
-
     # --------------------------------
     # Geocode nearby place
     # --------------------------------
@@ -348,6 +389,17 @@ def create_observation():
             continue
 
         try:
+            # -------------------------
+            # Validate file BEFORE S3
+            # -------------------------
+
+            try:
+                validated_files = validate_media_file(file)
+            except ValueError as error:
+                return {
+                    "error": str(error)
+                }, 400
+                
             uploaded = (
                 s3.upload_file(file)
             )
@@ -420,7 +472,7 @@ def create_observation():
     }
 
     result = (
-        mongo_db.observations.insert_one(
+        extensions.mongo_db["observations"].insert_one(
             observation
         )
     )

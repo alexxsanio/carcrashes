@@ -9,49 +9,49 @@ import ObservationList from "@/components/ObservationList";
 import { apiFetch, getToken, removeToken } from "@/lib/api";
 
 export type CrashObservation = {
-id: string;
+  id: string;
 
-nearbyPlace: string;
+  nearbyPlace: string;
 
-latitude: number | null;
-longitude: number | null;
+  latitude: number | null;
+  longitude: number | null;
 
-date: string;
-time: string;
+  date: string;
+  time: string;
 
-severity: string;
+  severity: string;
 
-vehicles: number;
+  vehicles: number;
 
-description: string;
+  description: string;
 
-media: {
-url?: string;
-type: "image" | "video";
-filename: string;
-}[];
+  media: {
+    url?: string;
+    type: "image" | "video";
+    filename: string;
+  }[];
 
-createdAt: string;
+  createdAt: string;
 };
 
 export default function Home() {
-const router = useRouter();
+  const router = useRouter();
 
-const [observations, setObservations] =
-useState<CrashObservation[]>([]);
+  const [observations, setObservations] =
+  useState<CrashObservation[]>([]);
 
-const [showModal, setShowModal] =
-useState(false);
+  const [showModal, setShowModal] =
+  useState(false);
 
-const [selectedObservation, setSelectedObservation] =
-useState<CrashObservation | null>(null);
+  const [selectedObservation, setSelectedObservation] =
+  useState<CrashObservation | null>(null);
 
-const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
-useEffect(() => {
-if (!getToken()) {
-  router.replace("/login");
-  return;
+  useEffect(() => {
+  if (!getToken()) {
+    router.replace("/login");
+    return;
 }
 
 
